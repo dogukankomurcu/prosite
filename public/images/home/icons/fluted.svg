@@ -1,0 +1,36 @@
+<svg
+    width="96"
+    height="96"
+    viewBox="0 0 96 96"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+>
+  <!-- Dış daire -->
+  <circle
+      cx="48"
+      cy="48"
+      r="44"
+      stroke="white"
+      stroke-width="2"
+  />
+
+  <!-- İç dikdörtgen çerçeve -->
+  <rect
+      x="32"
+      y="24"
+      width="32"
+      height="48"
+      rx="2"
+      ry="2"
+      stroke="white"
+      stroke-width="2"
+      fill="none"
+  />
+
+  <!-- 5 adet dikey çizgi (üst ve alt çerçeveye temas ediyor) -->
+  <line x1="36" y1="26" x2="36" y2="70" stroke="white" stroke-width="2"/>
+  <line x1="42" y1="26" x2="42" y2="70" stroke="white" stroke-width="2"/>
+  <line x1="48" y1="26" x2="48" y2="70" stroke="white" stroke-width="2"/>
+  <line x1="54" y1="26" x2="54" y2="70" stroke="white" stroke-width="2"/>
+  <line x1="60" y1="26" x2="60" y2="70" stroke="white" stroke-width="2"/>
+</svg>

@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        String @id @default(cuid())
+  slug      String @unique
+  sortOrder Int    @default(0)
+
+  texts     LocaleText[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model CaseCategory {
+  id   String @id @default(cuid())
+  slug String @unique
+
+  // Eski alanı şimdilik koruyoruz (fallback için)
+  title String
+
+  // Yeni çok dilliler
+  titleTr String?
+  titleEn String?
+
+  sortOrder Int @default(0)
+
+  cases Case[]
+}
+
+model Case {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String? // opsiyonel başlık
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  categoryId String?
+  category   CaseCategory? @relation(fields: [categoryId], references: [id])
+
+  sortOrder Int          @default(0)
+  texts     LocaleText[]
+  images    CaseImage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CaseImage {
+  id     String @id @default(cuid())
+  caseId String
+  case   Case   @relation(fields: [caseId], references: [id])
+
+  imagePath String // örn: "/cases/home-space-8006/1.jpg"
+  sortOrder Int    @default(0)
+}
+
+model LocaleText {
+  id          String  @id @default(cuid())
+  locale      String
+  title       String?
+  subtitle    String?
+  description String?
+  extra       Json?
+
+  // ilişki uçları (opsiyonel)
+  categoryId String?
+  productId  String?
+  caseId     String?
+  productCategoryId String?
+  productCategory   ProductCategory? @relation(fields: [productCategoryId], references: [id])
+
+  category Category? @relation(fields: [categoryId], references: [id])
+  product  Product?  @relation(fields: [productId], references: [id])
+  case     Case?     @relation(fields: [caseId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // her varlık + locale için tekil metin
+  @@unique([locale, categoryId])
+  @@unique([locale, productId])
+  @@unique([locale, productCategoryId])
+  @@unique([locale, caseId])
+  @@index([locale])
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  phone     String?
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  code       String      @unique // kısa sipariş kodu
+  customerId String?
+  customer   Customer?   @relation(fields: [customerId], references: [id])
+  status     String      @default("pending") // pending|paid|shipped|cancelled|refunded
+  currency   String      @default("TRY")
+  subtotal   Int         @default(0) // kuruş
+  discount   Int         @default(0)
+  tax        Int         @default(0)
+  total      Int         @default(0)
+  items      OrderItem[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  qty       Int     @default(1)
+  price     Int // birim fiyat (kuruş)
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Inventory {
+  id        String  @id @default(cuid())
+  productId String  @unique
+  onHand    Int     @default(0) // elde
+  reserved  Int     @default(0) // sepette/siparişte bekleyen
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model StockMovement {
+  id        String   @id @default(cuid())
+  productId String
+  delta     Int // +giriş / -çıkış
+  reason    String // purchase|sale|adjust|refund
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@index([productId, createdAt])
+}
+
+enum Locale {
+  TR
+  EN
+}
+
+model DownloadCategory {
+  id        Int        @id @default(autoincrement())
+  slug      String     @unique // "product-document", "international-certification" ...
+  labelTr   String
+  labelEn   String
+  sortOrder Int        @default(0)
+  downloads Download[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Download {
+  id         Int              @id @default(autoincrement())
+  categoryId Int
+  category   DownloadCategory @relation(fields: [categoryId], references: [id])
+
+  locale    Locale // TR / EN
+  slug      String
+  title     String
+  thumbnail String? // karttaki görsel: "/downloads/thumbs/2025-color-card.jpg"
+  password  String // şimdilik düz metin; sonra hash’e çeviririz
+
+  files            DownloadFile[]
+  productDownloads ProductDownload[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([slug, locale])
+}
+
+model DownloadFile {
+  id         Int      @id @default(autoincrement())
+  downloadId Int
+  download   Download @relation(fields: [downloadId], references: [id])
+
+  label     String? // "PDF", "Catalog", vs. istersen
+  filePath  String // "/downloads/2025-color-card.pdf"
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id   String @id @default(cuid())
+  slug String @unique
+  code String?            // <- ? EKLEDİK (opsiyonel)
+
+  categoryId String
+  category   ProductCategory @relation(fields: [categoryId], references: [id])
+
+  price  Int?
+  active Boolean @default(true)
+
+  thumbnailUrl String?    // <- ? EKLEDİK (opsiyonel)
+  mainImageUrl String?    // <- ? EKLEDİK (opsiyonel)
+
+  applicationImages ProductApplicationImage[]
+  downloads         ProductDownload[]
+
+  sortOrder  Int     @default(0)
+  isFeatured Boolean @default(false)
+
+  texts LocaleText[]
+  cases Case[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems     OrderItem[]
+  inventory      Inventory?
+  stockMovements StockMovement[]
+
+  @@index([categoryId])
+}
+
+model ProductDownload {
+  id        Int     @id @default(autoincrement())
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  downloadId Int
+  download   Download @relation(fields: [downloadId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductCategory {
+  id   String @id @default(cuid())
+  slug String @unique
+
+  nameTr String
+  nameEn String
+
+  sortOrder Int @default(0)
+
+  products Product[]
+  texts     LocaleText[]
+}
+
+model ProductApplicationImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  imageUrl  String
+  sortOrder Int    @default(0)
+}
